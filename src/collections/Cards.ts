@@ -2,6 +2,38 @@ import type { CollectionConfig } from 'payload'
 import { v4 as uuidv4 } from 'uuid'
 import CryptoJS from 'crypto-js'
 
+/**
+ * 验证 HWID 格式 (32位 MD5)
+ */
+const validateHWID = (value: string | string[] | null | undefined): string | true => {
+  if (!value) return true
+  // 处理数组情况
+  if (Array.isArray(value)) {
+    return 'HWID不能是数组'
+  }
+  if (typeof value !== 'string' || !/^[a-f0-9]{32}$/i.test(value)) {
+    return 'HWID必须是32位MD5格式'
+  }
+  return true
+}
+
+/**
+ * 生成唯一卡密
+ */
+const generateUniqueKey = (): string => {
+  const uuid = uuidv4()
+  return CryptoJS.MD5(uuid).toString()
+}
+
+/**
+ * 计算过期时间 (默认30天后)
+ */
+const calculateExpiredDate = (days = 30): Date => {
+  const expiredDate = new Date()
+  expiredDate.setDate(expiredDate.getDate() + days)
+  return expiredDate
+}
+
 export const Cards: CollectionConfig = {
   slug: 'cards',
   admin: {
@@ -29,8 +61,7 @@ export const Cards: CollectionConfig = {
       ({ data, operation }) => {
         // 创建新卡密时自动生成key
         if (operation === 'create' && !data.key) {
-          const uuid = uuidv4()
-          data.key = CryptoJS.MD5(uuid).toString()
+          data.key = generateUniqueKey()
         }
 
         // 如果状态改为已使用，设置使用时间和过期时间
@@ -39,10 +70,7 @@ export const Cards: CollectionConfig = {
             data.usedAt = new Date().toISOString()
           }
           if (!data.expiredAt) {
-            // 使用后30天过期
-            const expiredDate = new Date()
-            expiredDate.setDate(expiredDate.getDate() + 30)
-            data.expiredAt = expiredDate.toISOString()
+            data.expiredAt = calculateExpiredDate().toISOString()
           }
         }
 
@@ -57,6 +85,7 @@ export const Cards: CollectionConfig = {
       label: '卡密代码',
       required: true,
       unique: true,
+      index: true, // 添加索引优化查询性能
       admin: {
         readOnly: true,
         description: 'UUID生成后MD5加密的唯一标识符',
@@ -68,6 +97,7 @@ export const Cards: CollectionConfig = {
       label: '卡密状态',
       required: true,
       defaultValue: 'unused',
+      index: true, // 添加索引优化按状态查询
       options: [
         {
           label: '未使用',
@@ -110,6 +140,7 @@ export const Cards: CollectionConfig = {
       name: 'expiredAt',
       type: 'date',
       label: '过期时间',
+      index: true, // 添加索引优化过期查询
       admin: {
         date: {
           pickerAppearance: 'dayAndTime',
@@ -121,16 +152,12 @@ export const Cards: CollectionConfig = {
       name: 'hwid',
       type: 'text',
       label: '硬件ID (HWID)',
+      index: true, // 添加索引优化 HWID 查询
       admin: {
         readOnly: true,
         description: '绑定的硬件ID，MD5格式，验证时自动绑定',
       },
-      validate: (value: string | null | undefined) => {
-        if (value && typeof value === 'string' && !/^[a-f0-9]{32}$/i.test(value)) {
-          return 'HWID必须是32位MD5格式'
-        }
-        return true
-      },
+      validate: validateHWID,
     },
     {
       name: 'bindAt',
@@ -151,7 +178,7 @@ export const Cards: CollectionConfig = {
       admin: {
         description: '批量生成时的批次标识',
       },
-      index: true,
+      index: true, // 已有索引，保持
     },
   ],
   timestamps: true, // 自动添加createdAt和updatedAt字段

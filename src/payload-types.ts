@@ -86,8 +86,12 @@ export interface Config {
   db: {
     defaultIDType: number;
   };
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    'software-version': SoftwareVersion;
+  };
+  globalsSelect: {
+    'software-version': SoftwareVersionSelect<false> | SoftwareVersionSelect<true>;
+  };
   locale: null;
   user: User & {
     collection: 'users';
@@ -149,7 +153,14 @@ export interface User {
  */
 export interface Media {
   id: number;
-  alt: string;
+  /**
+   * 文件的描述文字
+   */
+  alt?: string | null;
+  /**
+   * 自动计算的MD5校验值
+   */
+  md5Hash?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -293,6 +304,7 @@ export interface UsersSelect<T extends boolean = true> {
  */
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
+  md5Hash?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -352,6 +364,52 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "software-version".
+ */
+export interface SoftwareVersion {
+  id: number;
+  /**
+   * 请使用语义化版本格式，例如: 1.0.0, 1.2.3-beta.1
+   */
+  version: string;
+  /**
+   * 应用是否可用 (启用/禁用)
+   */
+  appStatus?: boolean | null;
+  /**
+   * 上传软件安装包文件 (支持 .exe, .msi, .dmg, .pkg, .deb, .rpm, .zip 等格式)
+   */
+  softwarePackage?: (number | null) | Media;
+  /**
+   * 描述此版本的主要功能和变更
+   */
+  description?: string | null;
+  /**
+   * 版本发布时间
+   */
+  publishedAt?: string | null;
+  /**
+   * 配置最后更新时间
+   */
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "software-version_select".
+ */
+export interface SoftwareVersionSelect<T extends boolean = true> {
+  version?: T;
+  appStatus?: T;
+  softwarePackage?: T;
+  description?: T;
+  publishedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

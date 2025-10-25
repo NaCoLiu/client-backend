@@ -1,43 +1,39 @@
-version: '3'
+version: '3.8'
 
 services:
+  # Payload CMS 应用服务
   payload:
-    image: node:18-alpine
+    image: node:22-alpine
+    container_name: client-backend
     ports:
       - '3000:3000'
     volumes:
       - .:/home/node/app
       - node_modules:/home/node/app/node_modules
-    working_dir: /home/node/app/
+      - media:/home/node/app/media
+    working_dir: /home/node/app
     command: sh -c "corepack enable && corepack prepare pnpm@latest --activate && pnpm install && pnpm dev"
-    depends_on:
-      - mongo
-      # - postgres
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URI=file:./payload.db
     env_file:
       - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - app-network
 
-  # Ensure your DATABASE_URI uses 'mongo' as the hostname ie. mongodb://mongo/my-db-name
-  mongo:
-    image: mongo:latest
-    ports:
-      - '27017:27017'
-    command:
-      - --storageEngine=wiredTiger
-    volumes:
-      - data:/data/db
-    logging:
-      driver: none
-
-  # Uncomment the following to use postgres
-  # postgres:
-  #   restart: always
-  #   image: postgres:latest
-  #   volumes:
-  #     - pgdata:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
-  data:
-  # pgdata:
   node_modules:
+    driver: local
+  media:
+    driver: local
